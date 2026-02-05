@@ -13,9 +13,11 @@ public class Logger
         
     }
 
-    public void InitWriters()
+    public void InitWriters(string fileDirectory, string context)
     {
         _writers.Add(new ConsoleLogWriter());
+        _writers.Add(new FileLogWriter(fileDirectory, context));
+        _writers.Add(new JsonFileWriter(fileDirectory, context));
     }
     
     public void AddWriter(ILogWriter writer)
@@ -27,7 +29,7 @@ public class Logger
     {
         foreach (var writer in _writers)
         {
-            writer.write(type, message, new DateTime());
+            writer.write(type, message, DateTime.Now.ToString("dd-MM-yyyy-HH-mm-ss"));
         }
     }
     

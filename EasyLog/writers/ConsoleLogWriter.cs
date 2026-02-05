@@ -10,7 +10,7 @@ public class ConsoleLogWriter : ILogWriter
         
     }
 
-    public void write(LogType logType, string message, DateTime timeStamp)
+    public void write(LogType logType, string message, string timeStamp)
     {
         switch (logType)
         {

@@ -26,24 +26,6 @@ public class FileLogWriter : ILogWriter
         _filePath = ComputeFilePath(fileDirectory, context);
         InitFileStream();
     }
-    
-    /// <summary>
-    /// Writes a log message to the file.
-    /// </summary>
-    /// <param name="logType">The type of log (e.g., Error, Warning, Info).</param>
-    /// <param name="message">The main content of the log message, such as an exception or information.</param>
-    /// <param name="timeStamp">The timestamp indicating when the event occurred.</param>
-    public void write(LogType logType, string message, string timeStamp)
-    {
-        try
-        {
-            _streamWriter.WriteLine($"[{logType}] - {timeStamp} - {message}");
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e.ToString());
-        }
-    }
 
     /// <summary>
     /// Initializes the file stream for writing. Creates the directory and file if they do not exist.
@@ -89,5 +71,30 @@ public class FileLogWriter : ILogWriter
     private string ComputeFileName(string context)
     {
         return context + "-" + DateTime.Now.ToString("dd-MM-yyyy-HH-mm-ss") + ".txt";
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="logType"></param>
+    /// <param name="timeStamp"></param>
+    /// <param name="message"></param>
+    public void write(LogType logType, string timeStamp, Dictionary<string, string> message)
+    {
+        try
+        {
+            _streamWriter.WriteLine($"[{logType}] {timeStamp} | {_context}");
+
+            foreach (var kvp in message)
+            {
+                _streamWriter.WriteLine($"  - {kvp.Key} : {kvp.Value}");
+            }
+
+            _streamWriter.WriteLine();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.ToString());
+        }
     }
 }

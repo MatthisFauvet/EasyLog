@@ -13,6 +13,6 @@ namespace EasyLog.writers
         /// <param name="logType">The type of log (e.g., Error, Warning, Info).</param>
         /// <param name="message">The main content of the log message, such as an exception or information.</param>
         /// <param name="timeStamp">The timestamp indicating when the event occurred.</param>
-        void write(LogType logType, string message, string timeStamp);
+        void write(LogType logType, string timeStamp, Dictionary<string, string> message);
     }
 }

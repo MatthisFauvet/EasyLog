@@ -40,33 +40,6 @@ namespace EasyLog.writers
         }
 
         /// <summary>
-        /// Writes a log entry to the JSON log file.
-        /// </summary>
-        /// <param name="logType">The type or level of log (e.g., Error, Warning, Info).</param>
-        /// <param name="message">The content of the log message.</param>
-        /// <param name="timeStamp">The timestamp when the event occurred.</param>
-        public void write(LogType logType, string message, string timeStamp)
-        {
-            try
-            {
-                var logEntry = new
-                {
-                    timestamp = timeStamp,
-                    level = logType.ToString(),
-                    context = _context,
-                    message = message
-                };
-
-                string json = JsonSerializer.Serialize(logEntry);
-                _streamWriter.WriteLine(json);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
-        }
-
-        /// <summary>
         /// Disposes the underlying <see cref="StreamWriter"/> and releases resources.
         /// </summary>
         public void Dispose()
@@ -92,7 +65,40 @@ namespace EasyLog.writers
         /// <returns>A string representing the file name, formatted as 'context-dd-MM-yyyy.jsonl'.</returns>
         private string ComputeFileName(string context)
         {
-            return $"{context}-{DateTime.Now:dd-MM-yyyy}.jsonl";
+            return $"Log-{context}-{DateTime.Now:dd-MM-yyyy}.jsonl";
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="logType"></param>
+        /// <param name="timeStamp"></param>
+        /// <param name="message"></param>
+        /// <exception cref="NotImplementedException"></exception>
+        public void write(LogType logType, string timeStamp, Dictionary<string, string> messageByTopic)
+        {
+            try
+            {
+                var logEntry = new
+                {
+                    timestamp = timeStamp,
+                    level = logType.ToString(),
+                    context = _context,
+                    messages = messageByTopic
+                };
+
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = false
+                };
+
+                string json = JsonSerializer.Serialize(logEntry, options);
+                _streamWriter.WriteLine(json);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
     }
 }

@@ -12,6 +12,9 @@ namespace EasyLog.writers
         private readonly string _filePath;
         private readonly XmlWriter _xmlWriter;
 
+        private readonly object _writeLock = new object();
+        private bool _disposed = false;
+
         public XmlFileWriter(string fileDirectory, string context)
         {
             _context = context;
@@ -45,44 +48,59 @@ namespace EasyLog.writers
 
         public void write(LogType logType, string timeStamp, Dictionary<string, string> message)
         {
-            try
+            lock (_writeLock)
             {
-                _xmlWriter.WriteStartElement("log");
-                _xmlWriter.WriteAttributeString("timestamp", timeStamp);
-                _xmlWriter.WriteAttributeString("level", logType.ToString());
-                _xmlWriter.WriteAttributeString("context", _context);
+                // Guard against writing after Dispose()
+                if (_disposed) return;
 
-                foreach (var kvp in message)
+                try
                 {
-                    _xmlWriter.WriteStartElement("message");
-                    _xmlWriter.WriteAttributeString("key", kvp.Key);
-                    _xmlWriter.WriteString(kvp.Value);
-                    _xmlWriter.WriteEndElement();
-                }
+                    _xmlWriter.WriteStartElement("log");
+                    _xmlWriter.WriteAttributeString("timestamp", timeStamp);
+                    _xmlWriter.WriteAttributeString("level", logType.ToString());
+                    _xmlWriter.WriteAttributeString("context", _context);
 
-                _xmlWriter.WriteEndElement(); // log
-                _xmlWriter.Flush();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
+                    foreach (var kvp in message)
+                    {
+                        _xmlWriter.WriteStartElement("message");
+                        _xmlWriter.WriteAttributeString("key", kvp.Key);
+                        _xmlWriter.WriteString(kvp.Value);
+                        _xmlWriter.WriteEndElement();
+                    }
+
+                    _xmlWriter.WriteEndElement(); // log
+                    _xmlWriter.Flush();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
             }
         }
 
         public void Dispose()
         {
-            try
+            lock (_writeLock)
             {
-                _xmlWriter.WriteEndElement(); // logs
-                _xmlWriter.WriteEndDocument();
-                _xmlWriter.Flush();
-                _xmlWriter.Dispose();
+                if (_disposed) return;
+                try
+                {
+                    _xmlWriter.WriteEndElement(); // logs
+                    _xmlWriter.WriteEndDocument();
+                    _xmlWriter.Flush();
+                    _xmlWriter.Dispose();
+                }
+                catch
+                {
+                    // ignore dispose errors
+                }
+                finally
+                {
+                    // Always mark as disposed, even if the closing tags failed
+                    _disposed = true;
+                }
             }
-            catch
-            {
-                // ignore dispose errors
             }
-        }
 
         private string ComputeFilePath(string fileDirectory, string context)
         {

@@ -13,6 +13,15 @@ namespace EasyLog.writers
         private readonly string _filePath;
         private readonly StreamWriter _streamWriter;
 
+        // Instance-level lock — same reasoning as FileLogWriter
+        // Each instance has its own file, so no need for a static lock
+        private readonly object _writeLock = new object();
+
+        // Tracks whether Dispose() has already been called
+        // Prevents a second thread from disposing while another is still writing
+        private bool _disposed = false;
+
+
         /// <summary>
         /// Initializes a new instance of <see cref="JsonFileWriter"/> and prepares the JSON log file.
         /// </summary>
@@ -44,7 +53,48 @@ namespace EasyLog.writers
         /// </summary>
         public void Dispose()
         {
-            _streamWriter?.Dispose();
+            // Lock during dispose to prevent a thread from writing
+            // to a StreamWriter that another thread is currently disposing
+            lock (_writeLock)
+            {
+                if (!_disposed)
+                {
+                    _streamWriter?.Dispose();
+                    _disposed = true;
+                }
+            }
+        }
+
+        public void write(LogType logType, string timeStamp, Dictionary<string, string> messageByTopic)
+        {
+            lock (_writeLock)
+            {
+                // If Dispose() was already called, silently skip rather than crash
+                if (_disposed) return;
+
+                try
+                {
+                    var logEntry = new
+                    {
+                        timestamp = timeStamp,
+                        level = logType.ToString(),
+                        context = _context,
+                        messages = messageByTopic
+                    };
+
+                    var options = new JsonSerializerOptions
+                    {
+                        WriteIndented = false
+                    };
+
+                    string json = JsonSerializer.Serialize(logEntry, options);
+                    _streamWriter.WriteLine(json);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
+            }
         }
 
         /// <summary>
@@ -66,39 +116,6 @@ namespace EasyLog.writers
         private string ComputeFileName(string context)
         {
             return $"Log-{context}-{DateTime.Now:dd-MM-yyyy}.jsonl";
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="logType"></param>
-        /// <param name="timeStamp"></param>
-        /// <param name="message"></param>
-        /// <exception cref="NotImplementedException"></exception>
-        public void write(LogType logType, string timeStamp, Dictionary<string, string> messageByTopic)
-        {
-            try
-            {
-                var logEntry = new
-                {
-                    timestamp = timeStamp,
-                    level = logType.ToString(),
-                    context = _context,
-                    messages = messageByTopic
-                };
-
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = false
-                };
-
-                string json = JsonSerializer.Serialize(logEntry, options);
-                _streamWriter.WriteLine(json);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
         }
     }
 }

@@ -5,12 +5,17 @@ namespace EasyLog.writers;
 /// <summary>
 /// Provides functionality to write log messages to a text file.
 /// </summary>
-public class FileLogWriter : ILogWriter
+public class FileLogWriter : ILogWriter,IDisposable
 {
     private string _fileName;
     private string _filePath;
     private string _context;
-    private StreamWriter _streamWriter; 
+    private StreamWriter _streamWriter;
+
+
+    // Instance-level lock — protects _streamWriter from concurrent access
+    // Not static because each instance has its own file, they don't interfere
+    private readonly object _writeLock = new object();
 
     /// <summary>
     /// Initializes a new instance of <see cref="FileLogWriter"/> and prepares the log file.
@@ -81,20 +86,33 @@ public class FileLogWriter : ILogWriter
     /// <param name="message"></param>
     public void write(LogType logType, string timeStamp, Dictionary<string, string> message)
     {
-        try
+        // Lock on the instance lock — only one thread can write to THIS file at a time
+        // Other FileLogWriter instances writing to their own files are unaffected
+        lock (_writeLock)
         {
-            _streamWriter.WriteLine($"[{logType}] {timeStamp} | {_context}");
-
-            foreach (var kvp in message)
+            try
             {
-                _streamWriter.WriteLine($"  - {kvp.Key} : {kvp.Value}");
-            }
+                _streamWriter.WriteLine($"[{logType}] {timeStamp} | {_context}");
 
-            _streamWriter.WriteLine();
+                foreach (var kvp in message)
+                {
+                    _streamWriter.WriteLine($"  - {kvp.Key} : {kvp.Value}");
+                }
+
+                _streamWriter.WriteLine();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
         }
-        catch (Exception e)
+    }
+    public void Dispose()
+    {
+        lock (_writeLock)
         {
-            Console.WriteLine(e.ToString());
+            _streamWriter?.Flush();
+            _streamWriter?.Dispose();
         }
     }
 }
